@@ -1,0 +1,149 @@
+Strings
+===============
+
+Q1: Basic functions with String
+In the respect that no matter what programming idiom
+you choose, there are really only about three things you can do with a string: create or modify
+the sequence of characters stored in the string, detect the presence or absence of elements
+within the string, and translate between various schemes for representing string characters.
+
+Q2: Advantages of C++ Strings over C char arrays
+C++ string objects associate the array of
+characters which constitute the string with methods useful for managing and operating on it.
+A string also contains certain “housekeeping” information about the size and storage location
+of its data.Specifically, a C++ string object knows its starting location in memory, its
+content, its length in characters, and the length in characters to which it can grow before the
+string object must resize its internal data buffer. This gives rise to the second big difference
+between C char arrays and C++ strings. C++ strings do not include a null terminator, nor do
+the C++ string handling member functions rely on the existence of a null terminator to
+perform their jobs.C++ strings greatly reduce the likelihood of making three of the most
+common and destructive C programming errors: overwriting array bounds, trying to access
+arrays through uninitialized or incorrectly valued pointers, and leaving pointers “dangling”
+after an array ceases to occupy the storage that was once allocated to it.
+
+Q3: Creating and Initializing C++ Strings
+• Create an empty string and defer initializing it with character data
+• Initialize a string by passing a literal, quoted character array as an argument to the
+  constructor
+• Initialize a string using ‘=‘
+• Use one string to initialize another
+• Use a portion of either a C char array or a C++ string
+• Combine different sources of initialization data using operator+
+• Use the string object’s substr( ) member function to create a substring
+. C++ allows string initialization techniques to be mixed in a single statement, a flexible and convenient feature.
+. You can hand a string constructor two iterators and it will copy from one to the other into the new
+  string
+. C++ strings may not be initialized with single characters or with ASCII or other integer
+  values.
+  
+Q4: Problems with operating on char arrays in C
+If you’ve programmed in C, you are accustomed to the convenience of a large family of
+functions for writing, searching, rearranging, and copying char arrays. However, there are
+two unfortunate aspects of the Standard C library functions for handling char arrays. First,
+there are three loosely organized families of them: the “plain” group, the group that
+manipulates the characters without respect to case, and the ones which require you to supply a
+count of the number of characters to be considered in the operation at hand. The roster of
+function names in the C char array handling library literally runs to several pages, and though
+the kind and number of arguments to the functions are somewhat consistent within each of the
+three groups, to use them properly you must be very attentive to details of function naming
+and parameter passing.The second inherent trap of the standard C char array tools is that they all rely explicitly on
+the assumption that the character array includes a null terminator. If by oversight or error the
+null is omitted or overwritten, there’s very little to keep the C char array handling functions
+from manipulating the memory beyond the limits of the allocated space, sometimes with
+disastrous results.C++ provides a vast improvement in the convenience and safety of string objects. For
+purposes of actual string handling operations, there are a modest two or three dozen member
+function names. It’s worth your while to become acquainted with these. Each function is
+overloaded, so you don’t have to learn a new string member function name simply because of
+small differences in their parameters.
+
+Q5: Appending, inserting, replacing and concatenating strings
+One of the most valuable and convenient aspects of C++ strings is that they grow as needed,
+without intervention on the part of the programmer. Not only does this make string handling
+code inherently more trustworthy, it also almost entirely eliminates a tedious “housekeeping”
+chore – keeping track of the bounds of the storage in which your strings live.
+string member functions append( ) and insert( ) transparently reallocate storage when a string
+grows. you can safely relinquish much of the
+responsibility for allocating and managing the memory your strings occupy, C++ strings
+provide you with several tools to monitor and manage their size. The size( ), resize( ),
+capacity( ), and reserve( ) member functions can be very useful when its necessary to work
+back and forth between data contained in C++ style strings and traditional null terminated C
+char arrays.insert( ) is particularly nice because it absolves you of making sure the insertion of characters
+in a string won’t overrun the storage space or overwrite the characters immediately following
+the insertion point. Space grows and existing characters politely move over to accommodate
+the new elements. Sometimes, however, this might not be what you want to happen. If the
+data in string needs to retain the ordering of the original characters relative to one another or
+must be a specific constant size, use the replace( ) function to overwrite a particular sequence
+of characters with another group of characters. There are quite a number of overloaded
+versions of replace( ), but the simplest one takes three arguments: an integer telling where to
+start in the string, an integer telling how many characters to eliminate from the original string,
+and the replacement string (which can be a different number of characters than the eliminated
+quantity).Unlike insert( ), replace( ) won’t grow the string’s storage space if you copy new characters
+into the middle of an existing series of array elements. However, it will grow the storage
+space if you make a “replacement” that writes beyond the end of an existing array. 
+operator+ and operator+= are a very flexible and convenient means of combining string
+data. On the right hand side of the statement, you can use almost any type that evaluates to a
+group of one or more characters.
+
+Q6:Uppercase and Lowercase with Strings
+There are no functions in the string class to change the case of a string, but these functions
+can be easily created using the Standard C library functions toupper( ) and tolower( ), which
+change the case of one character at a time. 
+  
+Q7: Comparing Strings
+Comparing strings is inherently different than comparing numbers. Numbers have constant,
+universally meaningful values. To evaluate the relationship between the magnitude of two
+strings, you must make a lexical comparison. Lexical comparison means that when you test a
+character to see if it is “greater than” or “less than” another character, you are actually
+comparing the numeric representation of those characters as specified in the collating
+sequence of the character set being used. Most often, this will be the ASCII collating
+sequence, which assigns the printable characters for the English language numbers in the
+range from 32 to 127 decimal. In the ASCII collating sequence, the first “character” in the list
+is the space, followed by several common punctuation marks, and then uppercase and
+lowercase letters. With respect to the alphabet, this means that the letters nearer the front have
+lower ASCII values than those nearer the end. With these details in mind, it becomes easier to
+remember that when a lexical comparison that reports s1 is “greater than” s2, it simply means
+that when the two were compared, the first differing character in s1 came later in the alphabet
+than the character in that same position in s2.
+C++ provides several ways to compare strings, and each has their advantages. The simplest to
+use are the non member overloaded operator functions operator ==, operator != operator >,
+operator <, operator >=, and operator <=.
+The overloaded comparison operators are useful for comparing both full strings and
+individual string elements.You won’t find the logical not (!) or the logical comparison operators (&& and ||) among
+operators for string. (Neither will you find overloaded versions of the bitwise C operators &, |,
+^, or ~.) The overloaded non member comparison operators for the string class are limited to
+the subset which has clear, unambiguous application to single characters or groups of
+characters.The compare( ) member function offers you a great deal more sophisticated and precise
+comparison than the non member operator set, because it returns a lexical comparison value,
+and provides for comparisons that consider subsets of the string data. It provides overloaded
+versions that allow you to compare two complete strings, part of either string to a complete
+string, and subsets of two strings. 
+
+Q8: Indexing with [] vs .at()
+C++ strings provide an alternative to the s[n] notation: the at( ) member.
+These two idioms produce the same result in C++ if all goes well.
+However, there is one important difference between [ ] and at( ). When you try to reference
+an array element that is out of bounds, at( ) will do you the kindness of throwing an
+exception, while ordinary [ ] subscripting syntax will leave you to your own devices.
+Using at( ) in place of [ ] will give you a chance to gracefully recover from references to array
+elements that don’t exist. at( ) throws an object of class out_of_range. By catching this object
+in an exception handler, you can take appropriate remedial actions such as recalculating the
+offending subscript or growing the array. 
+
+Q9: Reverse Iterators
+Just as the standard C pointer gives us the increment (++) and decrement (--) operators to
+make pointer arithmetic a bit more convenient, C++ string iterators come in two basic
+varieties. You’ve seen end( ) and begin( ), which are the tools for moving forward through a
+string one element at a time. The reverse iterators rend( ) and rbegin( ) allow you to step
+backwards through a string.
+Reverse iterators act like pointers to elements of the string’s character array, except that when
+you apply the increment operator to them, they move backward rather than forward. rbegin( )
+and rend( ) supply string locations that are consistent with this behavior, to wit, rbegin( )
+locates the position just beyond the end of the string, and rend( ) locates the beginning. Aside
+from this, the main thing to remember about reverse iterators is that they aren’t type
+equivalent to ordinary iterators. For example, if a member function parameter list includes an
+iterator as an argument, you can’t substitute a reverse iterator to get the function to perform
+it’s job walking backward through the string.   
+The string constructor won’t accept reverse iterators in place of forward iterators in its
+parameter list. This is also true of string members such as copy( ), insert( ), and assign( ).
+
+  
