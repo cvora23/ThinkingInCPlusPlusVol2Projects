@@ -1,0 +1,280 @@
+Iostreams
+=========================
+
+Q1: Operator overloading 
+Before you can use the iostreams library, you must understand one new feature of the
+language that won’t be covered in detail until a later chapter. To use iostreams, you need to
+know that in C++ all the operators can take on different meanings. In this chapter, we’re
+particularly interested in << and >>. The statement “operators can take on different
+meanings” deserves some extra insight.
+In Chapter XX, you learned how function overloading allows you to use the same function
+name with different argument lists. Now imagine that when the compiler sees an expression
+consisting of an argument followed by an operator followed by an argument, it simply calls a
+function. That is, an operator is simply a function call with a different syntax.
+Of course, this is C++, which is very particular about data types. So there must be a
+previously declared function to match that operator and those particular argument types, or
+the compiler will not accept the expression.
+What most people find immediately disturbing about operator overloading is the thought that
+maybe everything they know about operators in C is suddenly wrong. This is absolutely false.
+Here are two of the sacred design goals of C++:
+1.A program that compiles in C will compile in C++. The only compilation
+errors and warnings from the C++ compiler will result from the “holes” in
+the C language, and fixing these will require only local editing. (Indeed, the
+complaints by the C++ compiler usually lead you directly to undiscovered
+bugs in the C program.)
+2.The C++ compiler will not secretly change the behavior of a C program by
+recompiling it under C++.
+Keeping these goals in mind will help answer a lot of questions; knowing there are no
+capricious changes to C when moving to C++ helps make the transition easy. In particular,
+operators for built-in types won’t suddenly start working differently – you cannot change their
+meaning. Overloaded operators can be created only where new data types are involved. So
+you can create a new overloaded operator for a new class, but the expression
+1 << 4;
+won’t suddenly change its meaning, and the illegal code
+1.414 << 1;
+won’t suddenly start working.
+
+Q2: Inserters and extractors
+In the iostreams library, two operators have been overloaded to make the use of iostreams
+easy. The operator << is often referred to as an inserter for iostreams, and the operator >> is
+often referred to as an extractor.cout and cin is notably tedious, and doesn’t seem like much of an improvement over printf( ), type
+checking or no.Fortunately, the overloaded inserters and extractors in iostreams are designed
+to be chained together into a complex expression that is much easier to write.
+
+Q3: streams
+A stream is an object that formats and holds bytes. You can have an input stream (istream) or
+an output stream (ostream). There are different types of istreams and ostreams: ifstreams and
+ofstreams for files, istrstreams , and ostrstreams for char* memory (in-core formatting), and
+istringstreams & ostringstreams for interfacing with the Standard C++ string class. All these
+stream objects have the same interface, regardless of whether you’re working with a file,
+standard I/O, a piece of memory or a string object. The single interface you learn also works
+for extensions added to support new classes.
+
+Q4: Common usage of streams cin and cout
+Although cin and the extractor >> provide a nice balance to cout and the inserter <<, in
+practice using formatted input routines, especially with standard input, has the same problems
+you run into with scanf( ). If the input produces an unexpected value, the process is skewed,
+and it’s very difficult to recover. In addition, formatted input defaults to whitespace
+delimiters.It seems cin and the extractor are provided only for completeness, and this is probably a good
+way to look at it. In practice, you’ll usually want to get your input a line at a time as a
+sequence of characters and then scan them and perform conversions once they’re safely in a
+buffer. This way you don’t have to worry about the input routine choking on unexpected data.
+
+Q5: Cin and Cout with GUI and Command Line Interface
+Another thing to consider is the whole concept of a command-line interface. This has made
+sense in the past when the console was little more than a glass typewriter, but the world is
+rapidly changing to one where the graphical user interface (GUI) dominates. What is the
+meaning of console I/O in such a world? It makes much more sense to ignore cin altogether
+other than for very simple examples or tests, and take the following approaches:
+1.If your program requires input, read that input from a file – you’ll soon see
+it’s remarkably easy to use files with iostreams. Iostreams for files still
+works fine with a GUI.
+2.Read the input without attempting to convert it. Once the input is someplace
+where it can’t foul things up during conversion, then you can safely scan it.
+3.Output is different. If you’re using a GUI, cout doesn’t work and you must
+send it to a file (which is identical to sending it to cout) or use the GUI
+facilities for data display. Otherwise it often makes sense to send it to cout.
+In both cases, the output formatting functions of iostreams are highly useful.
+  
+Q6: Line oriented input
+To grab input a line at a time, you have two choices: the member functions get( ) and
+getline( ). Both functions take three arguments: a pointer to a character buffer in which to
+store the result, the size of that buffer (so they don’t overrun it), and the terminating character,
+to know when to stop reading input. The terminating character has a default value of ‘\n’,
+which is what you’ll usually use. Both functions store a zero in the result buffer when they
+encounter the terminating character in the input.
+So what’s the difference? Subtle, but important: get( ) stops when it sees the delimiter in the
+input stream, but it doesn’t extract it from the input stream.Thus, if you did another get( )
+using the same delimiter it would immediately return with no fetched input. (Presumably, you
+either use a different delimiter in the next get( ) statement or a different input function.)
+getline( ), on the other hand, extracts the delimiter from the input stream, but still doesn’t
+store it in the result buffer.Generally, when you’re processing a text file that you read a line at a time, you’ll want to use
+getline( ).
+
+Q7: Overloaded versions of get()
+get( ) also comes in three other overloaded versions: one with no arguments that returns the
+next character, using an int return value; one that stuffs a character into its char argument,
+using a reference; and one that stores directly into the underlying buffer structure of
+another iostream object.
+
+Q8: Reading raw bytes
+If you know exactly what you’re dealing with and want to move the bytes directly into a
+variable, array, or structure in memory, you can use read( ). The first argument is a pointer to
+the destination memory, and the second is the number of bytes to read. This is especially
+useful if you’ve previously stored the information to a file, for example, in binary form using
+the complementary write( ) member function for an output stream.
+
+Q9: Error handling with get() and getline()
+All the versions of get( ) and getline( ) return the input stream from which the characters
+came except for get( ) with no arguments, which returns the next character or EOF. If you get
+the input stream object back, you can ask it if it’s still OK. In fact, you can ask any iostream
+object if it’s OK using the member functions good( ), eof( ), fail( ), and bad( ). These return
+state information based on the eofbit (indicates the buffer is at the end of sequence), the
+failbit (indicates some operation has failed because of formatting issues or some other
+problem that does not affect the buffer) and the badbit (indicates something has gone wrong
+with the buffer). the state of an input stream generally gets corrupted in weird
+ways only when you’re trying to do input to specific types and the type read from the input is
+inconsistent with what is expected. Then of course you have the problem of what to do with
+the input stream to correct the problem. If you follow my advice and read input a line at a
+time or as a big glob of characters (with read( )) and don’t attempt to use the input formatting
+functions except in simple cases, then all you’re concerned with is whether you’re at the end
+of the input (EOF). Fortunately, testing for this turns out to be simple and can be done inside
+of conditionals, such as while(cin) or if(cin). For now you’ll have to accept that when you use
+an input stream object in this context, the right value is safely, correctly and magically
+produced to indicate whether the object has reached the end of the input. You can also use the
+Boolean NOT operator !, as in if(!cin), to indicate the stream is not OK; that is, you’ve
+probably reached the end of input and should quit trying to read the stream.
+There are times when the stream becomes not-OK, but you understand this condition and
+want to go on using it. For example, if you reach the end of an input file, the eofbit and failbit
+are set, so a conditional on that stream object will indicate the stream is no longer good.
+However, you may want to continue using the file, by seeking to an earlier position and
+reading more data. To correct the condition, simply call the clear( ) member function.
+
+Q10:Iostream buffering
+Whenever you create a new class, you should endeavor to hide the details of the underlying
+implementation as possible from the user of the class. Try to show them only what they need
+to know and make the rest private to avoid confusion. Normally when using iostreams you
+don’t know or care where the bytes are being produced or consumed; indeed, this is different
+depending on whether you’re dealing with standard I/O, files, memory, or some newly created
+class or device.There comes a time, however, when it becomes important to be able to send messages to the
+part of the iostream that produces and consumes bytes. To provide this part with a common
+interface and still hide its underlying implementation, it is abstracted into its own class, called
+streambuf. Each iostream object contains a pointer to some kind of streambuf. (The kind
+depends on whether it deals with standard I/O, files, memory, etc.) You can access the
+streambuf directly; for example, you can move raw bytes into and out of the streambuf,
+without formatting them through the enclosing iostream. This is accomplished, of course, by
+calling member functions for the streambuf object.
+The most important thing for you to know is that every iostream object contains a
+pointer to a streambuf object, and the streambuf has some member functions you can call if
+you need to.To allow you to access the streambuf, every iostream object has a member function called
+rdbuf( ) that returns the pointer to the object’s streambuf. This way you can call any member
+function for the underlying streambuf. However, one of the most interesting things you can
+do with the streambuf pointer is to connect it to another iostream object using the <<
+operator. This drains all the bytes from your object into the one on the left-hand side of the
+<<. This means if you want to move all the bytes from one iostream to another, you don’t
+have to go through the tedium (and potential coding errors) of reading them one byte or one
+line at a time. It’s a much more elegant approach.
+There is a form of get( ) that allows you to write directly into the streambuf of another
+object. The first argument is the destination streambuf and the second is the terminating character,
+which stops the get( ) function.
+
+Q11: Seeking in iostreams
+Each type of iostream has a concept of where its “next” character will come from (if it’s an
+istream) or go (if it’s an ostream). In some situations you may want to move this stream
+position. You can do it using two models: One uses an absolute location in the stream called
+the streampos; the second works like the Standard C library functions fseek( ) for a file and
+moves a given number of bytes from the beginning, end, or current position in the file.
+The streampos approach requires that you first call a “tell” function: tellp( ) for an ostream
+or tellg( ) for an istream. (The “p” refers to the “put pointer” and the “g” refers to the “get
+pointer.”) This function returns a streampos you can later use in the single-argument version
+of seekp( ) for an ostream or seekg( ) for an istream, when you want to return to that
+position in the stream.The second approach is a relative seek and uses overloaded versions of seekp( ) and seekg( ).
+The first argument is the number of bytes to move: it may be positive or negative. The second
+argument is the seek direction:
+ios::beg - From beginning of stream
+ios::cur - Current position in stream
+ios::end - From end of stream
+
+Q12: Creating read/write files with streambuf
+Now that you know about the streambuf and how to seek, you can understand how to create
+a stream object that will both read and write a file.  
+The compiler won’t let you write to an ifstream, however, so you need to create an ostream with the underlying stream
+buffer:
+ifstream in("filename", ios::in|ios::out);
+ostream out(in.rdbuf());
+
+Q13: strstreams
+Before there were stringstreams, there were the more primitive strstreams. Although these
+are not an official part of Standard C++, they have been around a long time so compilers will
+no doubt leave in the strstream support in perpetuity, to compile legacy code. You should
+always use stringstreams, but it’s certainly likely that you’ll come across code that uses
+strstreams and at that point this section should come in handy. In addition, this section
+should make it fairly clear why stringstreams have replace strstreams.
+A strstream works directly with memory instead of a file or standard output. It allows you to
+use the same reading and formatting functions to manipulate bytes in memory. On old
+computers the memory was referred to as core so this type of functionality is often called in-
+core formatting.The class names for strstreams echo those for file streams. If you want to create a strstream to
+extract characters from, you create an istrstream. If you want to put characters into a
+strstream, you create an ostrstream.String streams work with memory, so you must deal with the issue of where the memory
+comes from and where it goes. This isn’t terribly complicated, but you must understand it and
+pay attention (it turned out is was too easy to lose track of this particular issue, thus the birth
+of stringstreams).
+
+Q14: Automatic Storage with output strstreams
+Output strstreams (but not istrstreams) give you a second option for memory allocation: they
+can do it themselves. All you do is create an ostrstream with no constructor arguments:
+ostrstream a;
+Now a takes care of all its own storage allocation on the heap. You can put as many bytes into
+a as you want, and if it runs out of storage, it will allocate more, moving the block of memory,
+if necessary.
+This is a very nice solution if you don’t know how much space you’ll need, because it’s
+completely flexible. And if you simply format data into the strstream and then hand its
+streambuf off to another iostream, things work perfectly:
+a << "hello, world. i = " << i << endl << ends;
+cout << a.rdbuf();
+This is the best of all possible solutions. But what happens if you want the physical address of
+the memory that a’s characters have been formatted into? It’s readily available – you simply
+call the str( ) member function:
+char* cp = a.str();
+There’s a problem now. What if you want to put more characters into a? It would be OK if
+you knew a had already allocated enough storage for all the characters you want to give it, but
+that’s not true. Generally, a will run out of storage when you give it more characters, and
+ordinarily it would try to allocate more storage on the heap. This would usually require
+moving the block of memory. But the stream objects has just handed you the address of its
+memory block, so it can’t very well move that block, because you’re expecting it to be at a
+particular location.
+The way an ostrstream handles this problem is by “freezing” itself. As long as you don’t use
+str( ) to ask for the internal char*, you can add as many characters as you want to the
+ostrstream. It will allocate all the necessary storage from the heap, and when the object goes
+out of scope, that heap storage is automatically released.
+However, if you call str( ), the ostrstream becomes “frozen.” You can’t add any more
+characters to it. Rather, you aren’t supposed to – implementations are not required to detect
+the error. Adding characters to a frozen ostrstream results in undefined behavior. In addition,
+the ostrstream is no longer responsible for cleaning up the storage. You took over that
+responsibility when you asked for the char* with str( ).
+To prevent a memory leak, the storage must be cleaned up somehow. There are two
+approaches. The more common one is to directly release the memory when you’re done. To
+understand this, you need a sneak preview of two new keywords in C++: new and delete. As
+you’ll see in Chapter XX, these do quite a bit, but for now you can think of them as
+replacements for malloc( ) and free( ) in C. The operator new returns a chunk of memory, and
+delete frees it. It’s important to know about them here because virtually all memory allocation
+in C++ is performed with new, and this is also true with ostrstream. If it’s allocated with
+new, it must be released with delete, so if you have an ostrstream a and you get the char*
+using str( ), the typical way to clean up the storage is
+delete []a.str();
+This satisfies most needs, but there’s a second, much less common way to release the storage:
+You can unfreeze the ostrstream. You do this by calling freeze( ), which is a member
+function of the ostrstream’s streambuf. freeze( ) has a default argument of one, which
+freezes the stream, but an argument of zero will unfreeze it:
+a.rdbuf()->freeze(0);
+Now the storage is deallocated when a goes out of scope and its destructor is called. In
+addition, you can add more bytes to a. However, this may cause the storage to move, so you
+better not use any pointer you previously got by calling str( ) – it won’t be reliable after
+adding more characters.
+
+Q15: Creating manipulators
+Sometimes you’d like to create your own manipulators, and it turns out to be remarkably
+simple. A zero-argument manipulator like endl is simply a function that takes as its argument
+an ostream reference (references are a different way to pass arguments, discussed in Chapter
+XX). The declaration for endl is
+ostream& endl(ostream&);
+Now, when you say:
+cout << “howdy” << endl;
+the endl produces the address of that function. So the compiler says “is there a function I can
+call that takes the address of a function as its argument?” There is a pre-defined function in
+Iostream.h to do this; it’s called an applicator. The applicator calls the function, passing it
+the ostream object as an argument.
+Here’s an example that creates a manipulator called nl that
+emits a newline without flushing the stream.
+ostream& nl(ostream& os) {
+return os << '\n';
+}
+
+Q16: Effectors
+As you’ve seen, zero-argument manipulators are quite easy to create. But what if you want to
+create a manipulator that takes arguments? The iostream library has a rather convoluted and
+confusing way to do this, but Jerry Schwarz, the creator of the iostream library, suggests a
+scheme he calls effectors. An effector is a simple class whose constructor performs the desired
+operation, along with an overloaded operator<< that works with the class.
+
+ 
