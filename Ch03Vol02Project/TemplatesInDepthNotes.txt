@@ -1,0 +1,110 @@
+Templates in depth
+=================================
+
+Q1: When and why to use typename in templates
+The typename keyword tells the compiler to interpret a particular name as a type. It must be
+used for a name that:
+1.Is a qualified name, one that is nested within another type.
+2.Depends on a template argument. That is, a template argument is somehow involved in
+the name. The template argument causes the ambiguity when the compiler makes the
+simplest assumption: that the name refers to something other than a type.
+Because the default behavior of the compiler is to assume that a name that fits the above two
+points is not a type, you must use typename even in places where you think that the compiler
+ought to be able to figure out the right way to interpret the name on its own. In the above
+example, when the compiler sees T::id, it knows (because of the typename keyword) that id
+refers to a nested type and thus it can create an object of that type.
+The short version of the rule is: if your type is a qualified name that involves a template
+argument, you must use typename.
+The typename keyword does not automatically create a typedef. A line which reads:
+typename Seq::iterator It;
+causes a variable to be declared of type Seq::iterator. 
+If you mean to make a typedef, you must say:
+typedef typename Seq::iterator It;
+
+Q2: Using typename instead of class
+With the introduction of the typename keyword, you now have the option of using typename
+instead of class in the template argument list of a template definition. This may produce code
+which is clearer:
+//: C03:UsingTypename.cpp
+// Using 'typename' in the template argument list
+template<typename T> class X { };
+You’ll probably see a great deal of code which does not use typename in this fashion, since
+the keyword was added to the language a relatively long time after templates were introduced.
+
+Q3: Function templates
+A class template describes an infinite set of classes, and the most common place you’ll see
+templates is with classes. However, C++ also supports the concept of an infinite set of
+functions, which is sometimes useful. The syntax is virtually identical, except that you create
+a function instead of a class.
+The clue that you should create a function template is, as you might suspect, if you find
+you’re creating a number of functions that look identical except that they are dealing with
+different types. The classic example of a function template is a sorting function.
+
+Q4: Taking address of a generated function template
+There are a number of situations where you need to take the address of a function. For
+example, you may have a function that takes an argument of a pointer to another function. Of
+course it’s possible that this other function might be generated from a template function so
+you need some way to take that kind of address.
+
+Q5: Local classes in templates. Applying a function to an STL sequence
+Suppose you want to take an STL sequence container and apply a function to all
+the objects it contains. Because a vector can contain any type of object, you need a function
+that works with any type of vector and any type of object it contains.
+
+Q6: Template specializations (Full specialization and Partial specialization)
+There’s nothing to prevent you from using a class template in any way you’d use an ordinary
+class. For example, you can easily inherit from a template, and you can create a new template
+that instantiates and inherits from an existing template. If the vector class does everything you
+want, but you’d also like it to sort itself, you can easily reuse the code and add value to it.
+
+Q7: Design and efficiency while using templates
+During
+program development, your priorities are to
+1. Get the class interfaces correct.
+2.Create an accurate implementation as rapidly as possible so you can:
+3.Prove your design.
+Very often, you will discover problems with the class interface only when you assemble your
+initial “rough draft” of the working system. You may also discover the need for “helper”
+classes like containers and iterators during system assembly and during your first-pass
+implementation. Sometimes it’s very difficult to discover these kinds of issues during analysis
+– your goal in analysis should be to get a big-picture design that can be rapidly implemented
+and tested. Only after the design has been proven should you spend the time to flesh it out
+completely and worry about performance issues. If the design fails, or if performance is not a
+problem, the bubble sort is good enough, and you haven’t wasted any time. (Of course, the
+ideal solution is to use someone else’s sorted container; the Standard C++ template library is
+the first place to look.)
+
+Q8: Preventing template bloat
+Each time you instantiate a template, the code in the template is generated anew (except for
+inline functions).If some of the functionality of a template does not depend on type, it can be
+put in a common base class to prevent needless reproduction of that code.
+
+Q9: Explicit instantiation
+At times it is useful to explicitly instantiate a template; that is, to tell the compiler to lay down
+the code for a specific version of that template even though you’re not creating an object at
+that point. To do this, you reuse the template keyword as follows:
+template class Bobbin<thread>;
+template void sort<char>(char*[]);
+
+Q10: Controlling template instantiation
+Normally templates are not instantiated until they are needed. For function templates this just
+means the point at which you call the function, but for class templates it’s more granular than
+that: each individual member function of the template is not instantiated until the first point of
+use. This means that only the member functions you actually use will be instantiated, which is
+quite important since it allows greater freedom in what the template can be used with.
+
+Q11: Weakness of templates and some confusion
+One of the greatest weaknesses of C++ templates will be shown to you when you try to write
+code that uses templates, especially STL code (introduced in the next two chapters), and start
+getting compile-time error messages. When you’re not used to it, the quantity of inscrutable
+text that will be spewed at you by the compiler will be quite overwhelming. After a while
+you’ll adapt (although it always feels a bit barbaric), and if it’s any consolation, C++
+compilers have actually gotten a lot better about this – previously they would only give the
+line where you tried to instantiate the template, and most of them now go to the line in the
+template definition that caused the problem.
+The issue is that a template implies an interface. That is, even though the template keyword
+says “I’ll take any type,” the code in a template definition actually requires that certain
+operators and member functions be supported – that’s the interface. So in reality, a template
+definition is saying “I’ll take any type that supports this interface.” Things would be much
+nicer if the compiler could simply say “hey, this type that you’re trying to instantiate the
+template with doesn’t support that interface – can’t do it.”
