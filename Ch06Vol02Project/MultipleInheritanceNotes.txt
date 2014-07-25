@@ -1,0 +1,165 @@
+Multiple Inheritance
+===============================
+
+Q1: Need for Multiple Inheritance
+The reason MI exists in C++ and not in other OOP languages is that C++ is a hybrid language
+and couldn’t enforce a single monolithic class hierarchy the way Smalltalk does. Instead, C++
+allows many inheritance trees to be formed, so sometimes you may need to combine the
+interfaces from two or more trees into a new class.
+One of the most pressing issues that drove MI involved containers. Suppose you want to
+create a container that everyone can easily use. One approach is to use void* as the type
+inside the container, as with PStash and Stack. The Smalltalk approach, however, is to make
+a container that holds Objects. (Remember that Object is the base type of the entire Smalltalk
+hierarchy.) Because everything in Smalltalk is ultimately derived from Object, any container
+that holds Objects can hold anything, so this approach works nicely.
+Now consider the situation in C++. Suppose vendor A creates an object-based hierarchy that
+includes a useful set of containers including one you want to use called Holder. Now you
+come across vendor B’s class hierarchy that contains some other class that is important to
+you, a BitImage class, for example, which holds graphic images. The only way to make a
+Holder of BitImages is to inherit a new class from both Object, so it can be held in the
+Holder, and BitImage.This was seen as an important reason for MI, and a number of class libraries were built on this
+model.The other reason you may need MI is logical, related to design. Unlike the above situation,
+where you don’t have control of the base classes, MI to make the design more flexible or useful. 
+ (At least, you may believe this to be the case.)
+An example of this is in the original iostream library design:
+Both istream and ostream are useful classes by themselves, but they can also be inherited
+into a class that combines both their characteristics and behaviors.
+
+Q2: Duplicate subobjects problem with MI
+When you inherit from a base class, you get a copy of all the data members of that base class
+in your derived class. This copy is referred to as a subobject. If you multiply inherit from class
+d1 and class d2 into class mi, class mi contains one subobject of d1 and one of d2. 
+Now consider what happens if d1 and d2 both inherit from the same base class, called Base:
+In the above diagram, both d1 and d2 contain a subobject of Base, so mi contains two
+subobjects of Base. Because of the path produced in the diagram, this is sometimes called a
+“diamond” in the inheritance hierarchy. Without diamonds, multiple inheritance is quite
+straightforward, but as soon as a diamond appears, trouble starts because you have duplicate
+subobjects in your new class. This takes up extra space, which may or may not be a problem
+depending on your design. But it also introduces an ambiguity.
+
+Q3: Ambiguous upcasting problem with MI
+With respect to above problem,if you want to cast a pointer to an mi to a pointer to a
+Base? There are two subobjects of type Base, so which address does the cast produce? 
+If you attempt to create a new mi and upcast the
+address to a MBase*. The compiler won’t accept this because it has no way of knowing
+whether you want to use D1’s subobject MBase or D2’s subobject MBase for the resulting
+address.
+
+Q4: virtual base classes
+The solution to Ambiguous upcasting problem with MI is a language extension: The meaning of the virtual
+keyword is overloaded. If you inherit a base class as virtual, only one subobject of that class
+will ever appear as a base class. Virtual base classes are implemented by the compiler with
+pointer magic in a way suggesting the implementation of ordinary virtual functions.
+Because only one subobject of a virtual base class will ever appear during multiple
+inheritance, there is no ambiguity during upcasting.
+
+Q5: Most derived class and virtual base intialization
+The use of virtual base classes isn’t quite as simple as that. If the virtual base has a constructor, things
+become a bit strange. To understand this, you need a new term: most-derived class.
+The most-derived class is the one you’re currently in, and is particularly important when
+you’re thinking about constructors. In the previous example, MBase is the most-derived class
+inside the MBase constructor. Inside the D1 constructor, D1 is the most-derived class, and
+inside the MI constructor, MI is the most-derived class.
+When you are using a virtual base class, the most-derived constructor is responsible for
+initializing that virtual base class. That means any class, no matter how far away it is from the
+virtual base, is responsible for initializing it.You are always forced to call virtual base constructor
+in the most-derived class no matter layers of inheritance.
+Note that only the single selected virtual base constructor is called.
+
+Q6: Tying off virtual bases with a default constructor
+Forcing the most-derived class to initialize a virtual base that may be buried deep in the class
+hierarchy can seem like a tedious and confusing task to put upon the user of your class. It’s
+better to make this invisible, which is done by creating a default constructor for the virtual
+base class. If you can always arrange for a virtual base class to have a default constructor, you’ll make
+things much easier for anyone who inherits from that class.
+
+Q7: Upcasting and MI
+When you embed subobjects of a class inside a new class, whether you do it by creating
+member objects or through inheritance, each subobject is placed within the new object by the
+compiler. Of course, each subobject has its own this pointer, and as long as you’re dealing
+with member objects, everything is quite straightforward. But as soon as multiple inheritance
+is introduced, a funny thing occurs: An object can have more than one this pointer because
+the object represents more than one type during upcasting.
+Although object layouts vary from compiler to compiler and are not specified in Standard
+C++, this one is fairly typical. The starting address of the object corresponds to the address of
+the first class in the base-class list. Then the second inherited class is placed, followed by the
+member objects in order of declaration.When the upcast to the Base1 and Base2 pointers occur, you can see that, even though they’re
+ostensibly pointing to the same object, they must actually have different this pointers, so the
+proper starting address can be passed to the member functions of each subobject. The only
+way things can work correctly is if this implicit upcasting takes place when you call a member
+function for a multiply inherited subobject.
+
+Q8: Persistence 
+Normally this isn’t a problem, because you want to call member functions that are concerned
+with that subobject of the multiply inherited object. However, if your member function needs
+to know the true starting address of the object, multiple inheritance causes problems.
+Ironically, this happens in one of the situations where multiple inheritance seems to be useful:
+persistence.The lifetime of a local object is the scope in which it is defined. The lifetime of a global
+object is the lifetime of the program. A persistent object lives between invocations of a
+program: You can normally think of it as existing on disk instead of in memory. One
+definition of an object-oriented database is “a collection of persistent objects.”
+To implement persistence, you must move a persistent object from disk into memory in order
+to call functions for it, and later store it to disk before the program expires. Four issues arise
+when storing an object on disk:
+1.  The object must be converted from its representation in memory to a series of bytes
+    on disk.
+2.  Because the values of any pointers in memory won’t have meaning the next time the
+    program is invoked, these pointers must be converted to something meaningful.
+3.  What the pointers point to must also be stored and retrieved.
+4.  When restoring an object from disk, the virtual pointers in the object must be
+    respected.
+Because the object must be converted back and forth between a layout in memory and a serial
+representation on disk, the process is called serialization (to write an object to disk) and
+deserialization (to restore an object from disk). Although it would be very convenient, these
+processes require too much overhead to support directly in the language. Class libraries will
+often build in support for serialization and deserialization by adding special member functions
+and placing requirements on new classes. (Usually some sort of serialize( ) function must be
+written for each new class.) Also, persistence is generally not automatic; you must usually
+explicitly write and read the objects.
+
+Q9: MI-based persistence and a problem
+A problem occurs in multiple inheritance any time a class must produce the this pointer for
+the actual object from a subobject’s this pointer. Of course, if you know your compiler always
+lays out objects in order of declaration in the inheritance list, you can ensure that you always
+put the critical class at the beginning of the list (assuming there’s only one critical class).
+However, such a class may exist in the inheritance hierarchy of another class and you may
+unwittingly put it in the wrong place during multiple inheritance. Fortunately, using run-time
+type identification (the subject of Chapter XX) will produce the proper pointer to the actual
+object, even if multiple inheritance is used.
+
+Q10: Avoiding MI
+The need for multiple inheritance is contrived, based on the concept that you
+don’t have control of some of the code in the project.
+There are many situations where multiple inheritance may be
+avoided; the language feature is included for unusual, special-case situations that would
+otherwise be difficult or impossible to handle. But when the question of whether to use
+multiple inheritance comes up, you should ask two questions:
+1.Do I need to show the public interfaces of both these classes, or could one
+class be embedded with some of its interface produced with member
+functions in the new class?
+2.Do I need to upcast to both of the base classes? (This applies when you
+have more than two base classes, of course.)
+If you can’t answer “no” to both questions, you can avoid using MI and should probably do
+so.One situation to watch for is when one class only needs to be upcast as a function argument.
+In that case, the class can be embedded and an automatic type conversion operator provided in
+your new class to produce a reference to the embedded object.Any time you use an object of
+your new class as an argument to a function that expects the embedded object, the type
+conversion operator is used. However, type conversion can’t be used for normal member
+selection; that requires inheritance.
+
+Q11: Using MI for Repairing an interface
+One of the best arguments for multiple inheritance involves code that’s out of your control.
+Suppose you’ve acquired a library that consists of a header file and compiled member
+functions, but no source code for member functions. This library is a class hierarchy with
+virtual functions, and it contains some global functions that take pointers to the base class of
+the library; that is, it uses the library objects polymorphically. Now suppose you build an
+application around this library, and write your own code that uses the base class
+polymorphically.Later in the development of the project or sometime during its maintenance, you discover that
+the base-class interface provided by the vendor is incomplete: A function may be nonvirtual
+and you need it to be virtual, or a virtual function is completely missing in the interface, but
+essential to the solution of your problem. If you had the source code, you could go back and
+put it in. But you don’t, and you have a lot of existing code that depends on the original
+interface. Here, multiple inheritance is the perfect solution.
+
+ 
+    
