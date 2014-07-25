@@ -1,0 +1,462 @@
+Exception Handling
+===================================
+
+Q1: Need for better error handling
+Improved error recovery is one of the most powerful ways you can increase the robustness of your code.
+Unfortunately, it’s almost accepted practice to ignore error conditions, as if we’re in a state of
+denial about errors. Some of the reason is no doubt the tediousness and code bloat of checking
+for many errors. For example, printf( ) returns the number of characters that were
+successfully printed, but virtually no one checks this value. The proliferation of code alone
+would be disgusting, not to mention the difficulty it would add in reading the code.
+The problem with C’s approach to error handling could be thought of as one of coupling – the
+user of a function must tie the error-handling code so closely to that function that it becomes
+too ungainly and awkward to use.
+One of the major features in C++ is exception handling, which is a better way of thinking
+about and handling errors. With exception handling,
+1. Error-handling code is not nearly so tedious to write, and it doesn't become
+mixed up with your "normal" code. You write the code you want to happen;
+later in a separate section you write the code to cope with the problems. If you
+make multiple calls to a function, you handle the errors from that function once,
+in one place.
+2. Errors cannot be ignored. If a function needs to send an error message to the
+caller of that function, it “throws” an object representing that error out of the
+function. If the caller doesn’t “catch” the error and handle it, it goes to the next
+enclosing scope, and so on until someone catches the error.
+
+Q2: Error handling in C
+Error handling is quite straightforward in situations where you check some condition and you
+know exactly what to do because you have all the necessary information in that context. Of
+course, you just handle the error at that point.
+The problem occurs when you don’t have enough information in that context, and you need to
+pass the error information into a larger context where that information does exist. There are
+three typical approaches in C to handle this situation.
+1: Return error information from the function or, if the return value cannot be
+used this way, set a global error condition flag. (Standard C provides errno
+and perror( ) to support this.) As mentioned before, the programmer may
+simply ignore the error information because tedious and obfuscating error
+checking must occur with each function call. In addition, returning from a
+function that hits an exceptional condition may not make sense.
+2: Use the little-known Standard C library signal-handling system,
+implemented with the signal( ) function (to determine what happens when
+the event occurs) and raise( ) (to generate an event). Again, this has high
+coupling because it requires the user of any library that generates signals to
+understand and install the appropriate signal-handling mechanism; also in
+large projects the signal numbers from different libraries may clash with
+each other.
+3: Use the nonlocal goto functions in the Standard C library: setjmp( ) and
+longjmp( ). With setjmp( ) you save a known good state in the program,
+and if you get into trouble, longjmp( ) will restore that state. Again, there is
+high coupling between the place where the state is stored and the place
+where the error occurs.
+When considering error-handling schemes with C++, there’s an additional very critical
+problem: The C techniques of signals and setjmp/longjmp do not call destructors, so objects
+aren’t properly cleaned up. This makes it virtually impossible to effectively recover from an
+exceptional condition because you’ll always leave objects behind that haven’t been cleaned
+up and that can no longer be accessed.
+
+Q3: Throwing an exception
+If you encounter an exceptional situation in your code – that is, one where you don’t have
+enough information in the current context to decide what to do – you can send information
+about the error into a larger context by creating an object containing that information and
+“throwing” it out of your current context. This is called throwing an exception. Here’s what it
+looks like:
+throw myerror(“something bad happened”);
+myerror is an ordinary class, which takes a char* as its argument. You can use any type
+when you throw (including built-in types), but often you’ll use special types created just for
+throwing exceptions.The keyword throw causes a number of relatively magical things to happen. First it creates an
+object that isn’t there under normal program execution, and of course the constructor is called
+for that object. Then the object is, in effect, “returned” from the function, even though that
+object type isn’t normally what the function is designed to return. A simplistic way to think
+about exception handling is as an alternate return mechanism, although you get into trouble if
+you take the analogy too far – you can also exit from ordinary scopes by throwing an
+exception. But a value is returned, and the function or scope exits.
+Any similarity to function returns ends there because where you return to is someplace
+completely different than for a normal function call. (You end up in an appropriate exception
+handler that may be miles away from where the exception was thrown.) In addition, only
+objects that were successfully created at the time of the exception are destroyed (unlike a
+normal function return that assumes all the objects in the scope must be destroyed). Of course,
+the exception object itself is also properly cleaned up at the appropriate point.
+In addition, you can throw as many different types of objects as you want. Typically, you’ll
+throw a different type for each different type of error. The idea is to store the information in
+the object and the type of object, so someone in the bigger context can figure out what to do
+with your exception.
+
+Q4: Catching an exception
+If a function throws an exception, it must assume that exception is caught and dealt with. As
+mentioned before, one of the advantages of C++ exception handling is that it allows you to
+concentrate on the problem you’re actually trying to solve in one place, and then deal with the
+errors from that code in another place.
+
+Q5: The try block
+If you’re inside a function and you throw an exception (or a called function throws an
+exception), that function will exit in the process of throwing. If you don’t want a throw to
+leave a function, you can set up a special block within the function where you try to solve
+your actual programming problem (and potentially generate exceptions). This is called the try
+block because you try your various function calls there. The try block is an ordinary scope,
+preceded by the keyword try:
+try {
+// Code that may generate exceptions
+}
+If you were carefully checking for errors without using exception handling, you’d have to
+surround every function call with setup and test code, even if you call the same function
+several times. With exception handling, you put everything in a try block without error
+checking. This means your code is a lot easier to write and easier to read because the goal of
+the code is not confused with the error checking.
+
+Q6: Exception handlers
+Of course, the thrown exception must end up someplace. This is the exception handler, and
+there’s one for every exception type you want to catch. Exception handlers immediately
+follow the try block and are denoted by the keyword catch.
+try {
+// code that may generate exceptions
+} catch(type1 id1) {
+// handle exceptions of type1
+} catch(type2 id2) {
+// handle exceptions of type2
+}
+// etc...
+Each catch clause (exception handler) is like a little function that takes a single argument of
+one particular type. The identifier (id1, id2, and so on) may be used inside the handler, just
+like a function argument, although sometimes there is no identifier because it’s not needed in
+the handler – the exception type gives you enough information to deal with it.
+The handlers must appear directly after the try block. If an exception is thrown, the exception-
+handling mechanism goes hunting for the first handler with an argument that matches the type
+of the exception. Then it enters that catch clause, and the exception is considered handled.
+(The search for handlers stops once the catch clause is finished.) Only the matching catch
+clause executes; it’s not like a switch statement where you need a break after each case to
+prevent the remaining ones from executing.
+Notice that, within the try block, a number of different function calls might generate the same
+exception, but you only need one handler.
+
+Q7: Termination vs resumption with Exception Handling
+There are two basic models in exception-handling theory. In termination (which is what C++
+supports) you assume the error is so critical there’s no way to get back to where the exception
+occurred. Whoever threw the exception decided there was no way to salvage the situation, and
+they don’t want to come back.
+The alternative is called resumption. It means the exception handler is expected to do
+something to rectify the situation, and then the faulting function is retried, presuming success
+the second time. If you want resumption, you still hope to continue execution after the
+exception is handled, so your exception is more like a function call – which is how you should
+set up situations in C++ where you want resumption-like behavior (that is, don’t throw an
+exception; call a function that fixes the problem). Alternatively, place your try block inside a
+while loop that keeps reentering the try block until the result is satisfactory.
+Historically, programmers using operating systems that supported resumptive exception
+handling eventually ended up using termination-like code and skipping resumption. So
+although resumption sounds attractive at first, it seems it isn’t quite so useful in practice. One
+reason may be the distance that can occur between the exception and its handler; it’s one thing
+to terminate to a handler that’s far away, but to jump to that handler and then back again may
+be too conceptually difficult for large systems where the exception can be generated from
+many points.
+
+Q8: Exception specification
+You’re not required to inform the person using your function what exceptions you might
+throw. However, this is considered very uncivilized because it means he cannot be sure what
+code to write to catch all potential exceptions. Of course, if he has your source code, he can
+hunt through and look for throw statements, but very often a library doesn’t come with
+sources. C++ provides a syntax to allow you to politely tell the user what exceptions this
+function throws, so the user may handle them. This is the exception specification and it’s part
+of the function declaration, appearing after the argument list.
+The exception specification reuses the keyword throw, followed by a parenthesized list of all
+the potential exception types. So your function declaration may look like
+void f() throw(toobig, toosmall, divzero);
+With exceptions, the traditional function declaration
+void f();
+means that any type of exception may be thrown from the function. If you say
+void f() throw();
+it means that no exceptions are thrown from a function.
+For good coding policy, good documentation, and ease-of-use for the function caller, you
+should always use an exception specification when you write a function that throws
+exceptions.
+
+Q9: unexpected()
+If your exception specification claims you’re going to throw a certain set of exceptions and
+then you throw something that isn’t in that set, what’s the penalty? The special function
+unexpected( ) is called when you throw something other than what appears in the exception
+specification.unexpected( ) is implemented with a pointer to a function, so you can change its behavior.
+You do so with a function called set_unexpected( ) which, like set_new_handler( ), takes
+the address of a function with no arguments and void return value. Also, it returns the
+previous value of the unexpected( ) pointer so you can save it and restore it later. To use
+set_unexpected( ), you must include the header file <exception>.
+
+Q10: Better exception specifications?
+You may feel the existing exception specification rules aren’t very safe, and that
+void f();
+should mean that no exceptions are thrown from this function. If the programmer wants to
+throw any type of exception, you may think he or she should have to say
+void f() throw(...); // Not in C++
+This would surely be an improvement because function declarations would be more explicit.
+Unfortunately you can’t always know by looking at the code in a function whether an
+exception will be thrown – it could happen because of a memory allocation, for example.
+Worse, existing functions written before exception handling was introduced may find
+themselves inadvertently throwing exceptions because of the functions they call (which may
+be linked into new, exception-throwing versions). Thus, the ambiguity, so
+void f();
+means “Maybe I’ll throw an exception, maybe I won’t.” This ambiguity is necessary to avoid
+hindering code evolution.
+
+Q11: Catching any exception
+As mentioned, if your function has no exception specification, any type of exception can be
+thrown. One solution to this problem is to create a handler that catches any type of exception.
+You do this using the ellipses in the argument list.
+catch(...) {
+cout << "an exception was thrown" << endl;
+}
+This will catch any exception, so you’ll want to put it at the end of your list of handlers to
+avoid pre-empting any that follow it.
+The ellipses give you no possibility to have an argument or to know anything about the type
+of the exception. It’s a catch-all.
+
+Q12: Rethrowing an exception
+Sometimes you’ll want to rethrow the exception that you just caught, particularly when you
+use the ellipses to catch any exception because there’s no information available about the
+exception. This is accomplished by saying throw with no argument:
+catch(...) {
+cout << "an exception was thrown" << endl;
+throw;
+}
+Any further catch clauses for the same try block are still ignored – the throw causes the
+exception to go to the exception handlers in the next-higher context. In addition, everything
+about the exception object is preserved, so the handler at the higher context that catches the
+specific exception type is able to extract all the information from that object.
+
+Q13: Uncaught exceptions
+If none of the exception handlers following a particular try block matches an exception, that
+exception moves to the next-higher context, that is, the function or try block surrounding the
+try block that failed to catch the exception. (The location of this higher-context try block is
+not always obvious at first glance.) This process continues until, at some level, a handler
+matches the exception. At that point, the exception is considered “caught,” and no further
+searching occurs.
+If no handler at any level catches the exception, it is “uncaught” or “unhandled.” An uncaught
+exception also occurs if a new exception is thrown before an existing exception reaches its
+handler – the most common reason for this is that the constructor for the exception object
+itself causes a new exception.
+
+Q14: terminate()
+If an exception is uncaught, the special function terminate( ) is automatically called. Like
+unexpected( ), terminate is actually a pointer to a function. Its default value is the Standard C
+library function abort( ), which immediately exits the program with no calls to the normal 
+termination functions (which means that destructors for global and static objects might not be
+called).No cleanups occur for an uncaught exception; that is, no destructors are called. If you don’t
+wrap your code (including, if necessary, all the code in main( )) in a try block followed by
+handlers and ending with a default handler (catch(...)) to catch all exceptions, then you will
+take your lumps. An uncaught exception should be thought of as a programming error.
+You can install your own terminate( ) function using the standard set_terminate( ) function,
+which returns a pointer to the terminate( ) function you are replacing, so you can restore it
+later if you want. Your custom terminate( ) must take no arguments and have a void return
+value. In addition, any terminate( ) handler you install must not return or throw an exception,
+but instead must call some sort of program-termination function. If terminate( ) is called, it
+means the problem is unrecoverable.
+Like unexpected( ), the terminate( ) function pointer should never be null.
+
+Q15: Cleaning up while exception thrown
+Part of the magic of exception handling is that you can pop from normal program flow into
+the appropriate exception handler. This wouldn’t be very useful, however, if things weren’t
+cleaned up properly as the exception was thrown. C++ exception handling guarantees that as
+you leave a scope, all objects in that scope whose constructors have been completed will have
+destructors called.
+
+Q16: Constructors and Exception Handling
+When writing code with exceptions, it’s particularly important that you always be asking, “If
+an exception occurs, will this be properly cleaned up?” Most of the time you’re fairly safe, but
+in constructors there’s a problem: If an exception is thrown before a constructor is completed,
+the associated destructor will not be called for that object. This means you must be especially
+diligent while writing your constructor.
+The general difficulty is allocating resources in constructors. If an exception occurs in the
+constructor, the destructor doesn’t get a chance to deallocate the resource. This problem
+occurs most often with “naked” pointers.
+To prevent this, guard against these “raw” resource allocations by placing the allocations
+inside their own objects with their own constructors and destructors. This way, each allocation
+becomes atomic, as an object, and if it fails, the other resource allocation objects are properly
+cleaned up.
+
+Q17: Exception matching
+When an exception is thrown, the exception-handling system looks through the “nearest”
+handlers in the order they are written. When it finds a match, the exception is considered
+handled, and no further searching occurs.
+Matching an exception doesn’t require a perfect match between the exception and its handler.
+An object or reference to a derived-class object will match a handler for the base class.
+(However, if the handler is for an object rather than a reference, the exception object is
+“sliced” as it is passed to the handler; this does no damage but loses all the derived-type
+information.) If a pointer is thrown, standard pointer conversions are used to match the
+exception. However, no automatic type conversions are used to convert one exception type to
+another in the process of matching.It makes more sense to catch the derived types
+first and put the base type at the end to catch anything less specific (or a derived class
+introduced later in the development cycle).
+
+Q18: Standard exceptions
+The set of exceptions used with the Standard C++ library are also available for your own use.
+Generally it’s easier and faster to start with a standard exception class than to try to define
+your own. If the standard class doesn’t do what you need, you can derive from it.
+The following tables describe the standard exceptions:
+1: exception---- The base class for all the exceptions thrown 
+by the C++ standard library. You can ask what( ) and get a result that can be displayed as a character representation.
+2: logic_error--- Derived from exception. Reports program logic errors, which could presumably be detected before the program executes.
+3: runtime_error Derived from exception. Reports runtime errors, which can presumably be detected only when the program executes.
+The iostream exception class ios::failure is also derived from exception, but it has no further
+subclasses.
+The classes in both of the following tables can be used as they are, or they can act as base
+classes to derive your own more specific types of exceptions.
+A:::Exception classes derived from logic_error
+1 domain_error -------- Reports violations of a precondition.
+2 invalid_argument ------------- Indicates an invalid argument to the function it’s thrown from.
+3 length_error -------------- Indicates an attempt to produce an object whose length is greater than or equal to
+                              NPOS (the largest representable value of type size_t).
+4 out_of_range --------------- Reports an out-of-range argument.
+5 bad_cast ------------------Thrown for executing an invalid dynamic_cast expression in run-time type identification.
+6 bad_typeid ----------------- Reports a null pointer p in an expression typeid(*p). (Again, a run-time type identification feature).
+B:::Exception classes derived from runtime_error
+1 range_error ---------------------- Reports violation of a postcondition.
+2 overflow_error ---------------------- Reports an arithmetic overflow.
+3 bad_alloc ----------------------------------- Reports a failure to allocate storage.
+
+Q19: When to avoid exceptions
+For most programmers, especially C programmers, exceptions are not available in their
+existing language and take a bit of adjustment. Here are some guidelines for programming
+with exceptions.
+Exceptions aren’t the answer to all problems. In fact, if you simply go looking for something
+to pound with your new hammer, you’ll cause trouble. The following sections point out
+situations where exceptions are not warranted.
+1: Not for asynchronous events
+    The Standard C signal( ) system, and any similar system, handles asynchronous events:
+    events that happen outside the scope of the program, and thus events the program cannot
+    anticipate. C++ exceptions cannot be used to handle asynchronous events because the
+    exception and its handler are on the same call stack. That is, exceptions rely on scoping,
+    whereas asynchronous events must be handled by completely separate code that is not part of
+    the normal program flow (typically, interrupt service routines or event loops).
+    This is not to say that asynchronous events cannot be associated with exceptions. But the
+    interrupt handler should do its job as quickly as possible and then return. Later, at some well-
+    defined point in the program, an exception might be thrown based on the interrupt.
+2: Not for ordinary error conditions
+    If you have enough information to handle an error, it’s not an exception. You should take care
+    of it in the current context rather than throwing an exception to a larger context.
+    Also, C++ exceptions are not thrown for machine-level events like divide-by-zero. It’s
+    assumed these are dealt with by some other mechanism, like the operating system or
+    hardware. That way, C++ exceptions can be reasonably efficient, and their use is isolated to
+    program-level exceptional conditions.
+3: Not for flow-of-control
+    An exception looks somewhat like an alternate return mechanism and somewhat like a switch
+    statement, so you can be tempted to use them for other than their original intent. This is a bad
+    idea, partly because the exception-handling system is significantly less efficient than normal
+    program execution; exceptions are a rare event, so the normal program shouldn’t pay for
+    them. Also, exceptions from anything other than error conditions are quite confusing to the
+    user of your class or function.
+4: You’re not forced to use exceptions
+    Some programs are quite simple, many utilities, for example. You may only need to take
+    input and perform some processing. In these programs you might attempt to allocate memory
+    and fail, or try to open a file and fail, and so on. It is acceptable in these programs to use
+    assert( ) or to print a message and abort( ) the program, allowing the system to clean up the
+    mess, rather than to work very hard to catch all exceptions and recover all the resources
+    yourself. Basically, if you don’t need to use exceptions, you don’t have to.
+5: New exceptions, old code
+    Another situation that arises is the modification of an existing program that doesn’t use
+    exceptions. You may introduce a library that does use exceptions and wonder if you need to
+    modify all your code throughout the program. Assuming you have an acceptable error-
+    handling scheme already in place, the most sensible thing to do here is surround the largest
+    block that uses the new library (this may be all the code in main( )) with a try block, followed
+    by a catch(...) and basic error message. You can refine this to whatever degree necessary by
+    adding more specific handlers, but, in any case, the code you’re forced to add can be minimal.
+    You can also isolate your exception-generating code in a try block and write handlers to
+    convert the exceptions into your existing error-handling scheme.
+    It’s truly important to think about exceptions when you’re creating a library for someone else
+    to use, and you can’t know how they need to respond to critical error conditions.
+
+Q20: Typical use of exceptions
+1. Fix the problem and call the function (which caused the exception) again.
+2. Patch things up and continue without retrying the function.
+3. Calculate some alternative result instead of what the function was supposed
+   to produce.
+4. Do whatever you can in the current context and rethrow the same exception
+   to a higher context.
+5. Do whatever you can in the current context and throw a different exception
+   to a higher context.
+6. Terminate the program.
+7. Wrap functions (especially C library functions) that use ordinary error
+   schemes so they produce exceptions instead.
+8. Simplify. If your exception scheme makes things more complicated, then it
+   is painful and annoying to use.
+9. Make your library and program safer. This is a short-term investment (for
+   debugging) and a long-term investment (for application robustness).
+
+
+Q21: Good guidelines for exceptions
+1:  Always use exception specifications
+    The exception specification is like a function prototype: It tells the user to write exception-
+    handling code and what exceptions to handle. It tells the compiler the exceptions that may
+    come out of this function.Of course, you can’t always anticipate by looking at the code what exceptions will arise from
+    a particular function. Sometimes the functions it calls produce an unexpected exception, and
+    sometimes an old function that didn’t throw an exception is replaced with a new one that
+    does, and you’ll get a call to unexpected( ). Anytime you use exception specifications or call
+    functions that do, you should create your own unexpected( ) function that logs a message and
+    rethrows the same exception.
+
+2:  Start with standard exceptions
+    Check out the Standard C++ library exceptions before creating your own. If a standard
+    exception does what you need, chances are it’s a lot easier for your user to understand and
+    handle.If the exception type you want isn’t part of the standard library, try to derive one from an
+    existing standard exception. It’s nice for your users if they can always write their code to
+    expect the what( ) function defined in the exception( ) class interface.
+3:  Use exception hierarchies
+    Exception hierarchies provide a valuable way to classify the different types of critical errors
+    that may be encountered with your class or library. This gives helpful information to users,
+    assists them in organizing their code, and gives them the option of ignoring all the specific
+    types of exceptions and just catching the base-class type. Also, any exceptions added later by
+    inheriting from the same base class will not force all existing code to be rewritten – the base-
+    class handler will catch the new exception.
+    Of course, the Standard C++ exceptions are a good example of an exception hierarchy, and
+    one that you can use to build upon.
+4:  Multiple inheritance
+    You’ll remember that the only essential place for MI is if you need to
+    upcast a pointer to your object into two different base classes – that is, if you need
+    polymorphic behavior with both of those base classes. It turns out that exception hierarchies
+    are a useful place for multiple inheritance because a base-class handler from any of the roots
+    of the multiply inherited exception class can handle the exception.
+5:  Catch by reference, not by value
+    If you throw an object of a derived class and it is caught by value in a handler for an object of
+    the base class, that object is “sliced” – that is, the derived-class elements are cut off and you’ll
+    end up with the base-class object being passed. Chances are this is not what you want because
+    the object will behave like a base-class object and not the derived class object it really is (or
+    rather, was – before it was sliced). Although you can also throw and catch pointers, by doing so you introduce more coupling –
+    the thrower and the catcher must agree on how the exception object is allocated and cleaned
+    up. This is a problem because the exception itself may have occurred from heap exhaustion. If
+    you throw exception objects, the exception-handling system takes care of all storage.
+6:  Throw exceptions in constructors
+    Because a constructor has no return value, you’ve previously had two choices to report an
+    error during construction:
+    1. Set a nonlocal flag and hope the user checks it.
+    2. Return an incompletely created object and hope the user checks it.
+    This is a serious problem because C programmers have come to rely on an implied guarantee
+    that object creation is always successful, which is not unreasonable in C where types are so
+    primitive. But continuing execution after construction fails in a C++ program is a guaranteed
+    disaster, so constructors are one of the most important places to throw exceptions – now you
+    have a safe, effective way to handle constructor errors. However, you must also pay attention
+    to pointers inside objects and the way cleanup occurs when an exception is thrown inside a
+    constructor.
+7:  Don’t cause exceptions in destructors
+    Because destructors are called in the process of throwing other exceptions, you’ll never want
+    to throw an exception in a destructor or cause another exception to be thrown by some action
+    you perform in the destructor. If this happens, it means that a new exception may be thrown
+    before the catch-clause for an existing exception is reached, which will cause a call to
+    terminate( ).This means that if you call any functions inside a destructor that may throw exceptions, those
+    calls should be within a try block in the destructor, and the destructor must handle all
+    exceptions itself. None must escape from the destructor.
+8:  Avoid naked pointers
+    A naked pointer usually means vulnerability in the constructor if resources are allocated for that pointer. 
+    A pointer doesn’t have a destructor, so those resources won’t be released if an exception is thrown in the constructor.
+    
+Q22: Overhead with exceptions
+Of course it costs something for this new feature; when an exception is thrown there’s
+considerable runtime overhead. This is the reason you never want to use exceptions as part of
+your normal flow-of-control, no matter how tempting and clever it may seem. Exceptions
+should occur only rarely, so the overhead is piled on the exception and not on the normally
+executing code. One of the important design goals for exception handling was that it could be
+implemented with no impact on execution speed when it wasn’t used; that is, as long as you
+don’t throw an exception, your code runs as fast as it would without exception handling.
+Whether or not this is actually true depends on the particular compiler implementation you’re
+using.Exception handling also causes extra information to be put on the stack by the compiler, to aid
+in stack unwinding.Exception objects are properly passed around like any other objects, except that they can be
+passed into and out of what can be thought of as a special “exception scope” (which may just
+be the global scope). That’s how they go from one place to another. When the exception
+handler is finished, the exception objects are properly destroyed.
+    
+    
+   
