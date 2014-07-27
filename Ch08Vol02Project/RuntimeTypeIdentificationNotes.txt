@@ -1,0 +1,198 @@
+RTTI
+====================
+
+Q1:Need for RTTI
+Run-time type identification (RTTI) lets you find the exact
+type of an object when you have only a pointer or reference
+to the base type.This can be thought of as a “secondary” feature in C++, a pragmatism to help out when you
+get into messy situations. Normally, you’ll want to intentionally ignore the exact type of an
+object and let the virtual function mechanism implement the correct behavior for that type.
+But occasionally it’s useful to know the exact type of an object for which you only have a
+base pointer. Often this information allows you to perform a special-case operation more
+efficiently or prevent a base-class interface from becoming ungainly. It happens enough that
+most class libraries contain virtual functions to produce run-time type information. When
+exception handling was added to C++, it required the exact type information about objects. It
+became an easy next step to build access to that information into the language.
+
+Q2: What is RTTI
+What if you have a special programming problem that’s easiest to solve if you know the
+exact type of a generic pointer? For example, suppose you want to allow your users to
+highlight all the shapes of any particular type by turning them purple. This way, they can find
+all the triangles on the screen by highlighting them. Your natural first approach may be to try
+a virtual function like TurnColorIfYouAreA( ), which allows enumerated arguments of
+some type color and of Shape::Circle, Shape::Square, or Shape::Triangle.
+To solve this sort of problem, most class library designers put virtual functions in the base
+class to return type information about the specific object at runtime. You may have seen
+library member functions with names like isA( ) and typeOf( ). These are vendor-defined
+RTTI functions. Using these functions, as you go through the list you can say, “If you’re a
+triangle, turn purple.”When exception handling was added to C++, the implementation required that some run-time
+type information be put into the virtual function tables. This meant that with a small language
+extension the programmer could also get the run-time type information about an object. All
+library vendors were adding their own RTTI anyway, so it was included in the language.
+RTTI, like exceptions, depends on type information residing in the virtual function table. If
+you try to use RTTI on a class that has no virtual functions, you’ll get unexpected results.
+
+Q3: Two syntaxes for RTTI
+There are two different ways to use RTTI. T
+1: he first acts like sizeof( ) because it looks like a
+function, but it’s actually implemented by the compiler. typeid( ) takes an argument that’s an
+object, a reference, or a pointer and returns a reference to a global const object of type
+typeinfo.These can be compared to each other with the operator== and operator!=, and you
+can also ask for the name( ) of the type, which returns a string representation of the type
+name. Note that if you hand typeid( ) a Shape*, it will say that the type is Shape*, so if you
+want to know the exact type it is pointing to, you must dereference the pointer. For example,
+if s is a Shape*,
+cout << typeid(*s).name() << endl;
+will print out the type of the object s points to.
+You can also ask a typeinfo object if it precedes another typeinfo object in the
+implementation-defined “collation sequence,” using before(typeinfo&), which returns true or
+false. When you say,
+if(typeid(me).before(typeid(you))) // ...
+you’re asking if me occurs before you in the collation sequence.
+2: The second syntax for RTTI is called a “type-safe downcast.” The reason for the term
+“downcast” is (again) the historical arrangement of the class hierarchy diagram. If casting a
+Circle* to a Shape* is an upcast, then casting a Shape* to a Circle* is a downcast. However,
+you know a Circle* is also a Shape*,and the compiler freely allows an upcast assignment, but
+you don’t know that a Shape* is necessarily a Circle*, so the compiler doesn’t allow you to
+perform a downcast assignment without using an explicit cast. You can of course force your
+way through using ordinary C-style casts or a C++ static_cast (described at the end of this
+chapter), which says, “I hope this is actually a Circle*, and I’m going to pretend it is.”
+Without some explicit knowledge that it is in fact a Circle, this is a totally dangerous thing to
+do. A common approach in vendor-defined RTTI is to create some function that attempts to
+assign (for this example) a Shape* to a Circle*, checking the type in the process. If this
+function returns the address, it was successful; if it returns null, you didn’t have a Circle*.
+The C++ RTTI typesafe-downcast follows this “attempt-to-cast” function form, but it uses
+(very logically) the template syntax to produce the special function dynamic_cast. So the
+example becomes
+Shape* sp = new Circle;
+Circle* cp = dynamic_cast<Circle*>(sp);
+if(cp) cout << "cast successful";
+The template argument for dynamic_cast is the type you want the function to produce, and
+this is the return value for the function. The function argument is what you are trying to cast
+from.
+
+Q4: Nonpolymorphic types and RTTI
+Although typeid( ) works with nonpolymorphic types (those that don’t have a virtual function
+in the base class), the information you get this way is dubious. 
+Because there’s no polymorphism, the static type information is used.
+The typeid( ) operator will produce results, but not the ones you might expect. 
+RTTI is intended for use only with polymorphic classes.
+
+Q5: Casting to intermediate levels and RTTI
+dynamic_cast can detect both exact types and, in an inheritance hierarchy with multiple
+levels, intermediate types.Casting to intermediate levels brings up an interesting difference between dynamic_cast and
+typeid( ). typeid( ) always produces a reference to a typeinfo object that describes the exact
+type of the object. Thus it doesn’t give you intermediate-level information. 
+
+Q6: RTTI and void pointers
+Run-time type identification doesn’t work with void pointers.
+A void* truly means “no type information at all.”
+
+Q7: Using RTTI with templates
+Templates generate many different class names, and sometimes you’d like to print out
+information about what class you’re in. RTTI provides a convenient way to do this.
+
+Q8: RTTI and references
+RTTI must adjust somewhat to work with references. The contrast between pointers and
+references occurs because a reference is always dereferenced for you by the compiler,
+whereas a pointer’s type or the type it points to may be examined.
+
+Q9: Exceptions and RTTI
+When you perform a dynamic_cast to a reference, the result must be assigned to a reference.
+But what happens if the cast fails? There are no null references, so this is the perfect place to
+throw an exception; the Standard C++ exception type is bad_cast.
+
+Q10: Sensible use for RTTI
+Because it allows you to discover type information from an anonymous polymorphic pointer,
+RTTI is ripe for misuse by the novice because RTTI may make sense before virtual functions
+do. For many people coming from a procedural background, it’s very difficult not to organize
+their programs into sets of switch statements. They could accomplish this with RTTI and thus
+lose the very important value of polymorphism in code development and maintenance. The
+intent of C++ is that you use virtual functions throughout your code, and you only use RTTI
+when you must.However, using virtual functions as they are intended requires that you have control of the
+base-class definition because at some point in the extension of your program you may
+discover the base class doesn’t include the virtual function you need. If the base class comes
+from a library or is otherwise controlled by someone else, a solution to the problem is RTTI:
+You can inherit a new type and add your extra member function. Elsewhere in the code you
+can detect your particular type and call that member function. This doesn’t destroy the
+polymorphism and extensibility of the program, because adding a new type will not require
+you to hunt for switch statements. However, when you add new code in your main body that
+requires your new feature, you’ll have to detect your particular type.
+Putting a feature in a base class might mean that, for the benefit of one particular class, all the
+other classes derived from that base require some meaningless stub of a virtual function. This
+makes the interface less clear and annoys those who must redefine pure virtual functions
+when they derive from that base class.Finally, RTTI will sometimes solve efficiency problems. If your code uses polymorphism in a
+nice way, but it turns out that one of your objects reacts to this general-purpose code in a
+horribly inefficient way, you can pick that type out using RTTI and write case-specific code
+to improve the efficiency.
+
+Q11: Mechanism and overhead of RTTI
+Typically, RTTI is implemented by placing an additional pointer in the VTABLE. This
+pointer points to the typeinfo structure for that particular type. (Only one instance of the
+typeinfo structure is created for each new class.) So the effect of a typeid( ) expression is
+quite simple: The VPTR is used to fetch the typeinfo pointer, and a reference to the resulting
+typeinfo structure is produced. Also, this is a deterministic process – you always know how
+long it’s going to take.For a dynamic_cast<destination*>(source_pointer), most cases are quite straightforward:
+source_pointer’s RTTI information is retrieved, and RTTI information for the type
+destination* is fetched. Then a library routine determines whether source_pointer’s type is
+of type destination* or a base class of destination*. The pointer it returns may be slightly
+adjusted because of multiple inheritance if the base type isn’t the first base of the derived
+class. The situation is (of course) more complicated with multiple inheritance where a base
+type may appear more than once in an inheritance hierarchy and where virtual base classes are
+used.Because the library routine used for dynamic_cast must check through a list of base classes,
+the overhead for dynamic_cast is higher than typeid( ) (but of course you get different
+information, which may be essential to your solution), and it’s nondeterministic because it
+may take more time to discover a base class than a derived class. In addition, dynamic_cast
+allows you to compare any type to any other type; you aren’t restricted to comparing types
+within the same hierarchy. This adds extra overhead to the library routine used by
+dynamic_cast.
+
+Q12: Creating your own RTTI
+If your compiler doesn’t yet support RTTI, you can build it into your class libraries quite
+easily. This makes sense because RTTI was added to the language after observing that
+virtually all class libraries had some form of it anyway (and it was relatively “free” after
+exception handling was added because exceptions require exact knowledge of type
+information).Essentially, RTTI requires only a virtual function to identify the exact type of the class, and a
+function to take a pointer to the base type and cast it down to the more derived type; this
+function must produce a pointer to the more derived type.
+There are a number of approaches to implement your own RTTI, but all require a
+unique identifier for each class and a virtual function to produce type information.
+
+Q13: Explicit cast syntax
+Whenever you use a cast, you’re breaking the type system. You’re telling the compiler that
+even though you know an object is a certain type, you’re going to pretend it is a different
+type. This is an inherently dangerous activity, and a clear source of errors.
+Unfortunately, each cast is different: the name of the pretender type surrounded by
+parentheses. So if you are given a piece of code that isn’t working correctly and you know
+you want to examine all casts to see if they’re the source of the errors, how can you guarantee
+that you find all the casts? In a C program, you can’t. For one thing, the C compiler doesn’t
+always require a cast (it’s possible to assign dissimilar types through a void pointer without 
+being forced to use a cast), and the casts all look different, so you can’t know if you’ve
+searched for every one.To solve this problem, C++ provides a consistent casting syntax using four reserved words:
+dynamic_cast (the subject of the first part of this chapter), const_cast, static_cast, and
+reinterpret_cast. This window of opportunity opened up when the need for dynamic_cast
+arose – the meaning of the existing cast syntax was already far too overloaded to support any
+additional functionality.By using these casts instead of the (newtype) syntax, you can easily search for all the casts in
+any program. To support existing code, most compilers have various levels of error/warning
+generation that can be turned on and off. But if you turn on full errors for the explicit cast
+syntax, you can be guaranteed that you’ll find all the places in your project where casts occur,
+which will make bug-hunting much easier.
+The following table describes the different forms of casting:
+1: static_cast      For “well-behaved” and “reasonably well-
+                    behaved” casts, including things you
+                    might now do without a cast (e.g., an
+                    upcast or automatic type conversion).
+2: const_cast       To cast away const and/or volatile.
+3: dynamic_cast     For type-safe downcasting
+4: reinterpret_cast To cast to a completely different meaning.
+                    The key is that you’ll need to cast back to
+                    the original type to use it safely. The type
+                    you cast to is typically used only for bit
+                    twiddling or some other mysterious
+                    purpose. This is the most dangerous of all
+                    the casts.
+
+
+ 
+
+  
